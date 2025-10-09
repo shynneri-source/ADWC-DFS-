@@ -1,0 +1,12 @@
+
+# Bỏ folder data, results, logs
+data/
+results/
+logs/
+
+# Bỏ các file môi trường
+*.env
+*.pyc
+__pycache__/
+.venv/
+uv.lock
