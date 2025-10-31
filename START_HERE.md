@@ -1,102 +1,115 @@
 # 🚀 BẮT ĐẦU TẠI ĐÂY / START HERE
 
-## Xin chào! Đây là ADWC-DFS - Thuật toán phát hiện fraud tiên tiến 🎯
+## ADWC-DFS Ensemble - Phát hiện fraud với 84-91% recall 🎯
 
 ---
 
-## ⚡ Quick Start (3 bước)
+## ⚡ Quick Start (2 bước)
 
-### Bước 1: Cài đặt
+### Bước 1: Test Ensemble (10% data, ~5 phút)
 ```bash
-cd /home/shynn/source/ADWC-DFS
-uv sync
+cd /home/shyn/Dev/ADWC-DFS-
+python test_ensemble.py
 ```
 
-### Bước 2: Chạy Demo
+### Bước 2: Train Production Ensemble (100% data, ~30-60 phút)
 ```bash
-uv run demo.py
+python ensemble_voting.py --n_models 5
 ```
 
-### Bước 3: Xem kết quả
-- Performance metrics
-- Feature importance
-- Sample predictions
-
-**Thời gian:** ~2-3 phút
+**Done!** Model ready tại `results/ensemble_model.pkl`
 
 ---
 
-## 📚 Tài Liệu Theo Cấp Độ
-
-### 🟢 Người Mới Bắt Đầu
-1. **START_HERE.md** ← Bạn đang ở đây!
-2. **HUONG_DAN_TIENG_VIET.md** - Hướng dẫn tiếng Việt đầy đủ
-3. **QUICKSTART.md** - Hướng dẫn nhanh bằng tiếng Anh
-4. **LOGGING_GUIDE.md** - 📝 Cách xem và quản lý logs
-5. ⭐ **ENSEMBLE_USAGE_GUIDE.md** - Hướng dẫn ensemble (nâng recall)
-6. Chạy `demo.py` để xem nó hoạt động
-7. Chạy `test_ensemble.py` để test ensemble
-
-### 🟡 Người Có Kinh Nghiệm
-1. **README.md** - Tổng quan và sử dụng
-2. **train.py** - Script training đầy đủ
-3. ⭐ **ensemble_voting.py** - Ensemble implementation
-4. **evaluate.py** - So sánh với baselines
-5. **example_usage.py** - Các ví dụ nâng cao
-
-### 🔴 Chuyên Gia / Researcher
-1. **ALGORITHM.md** - Chi tiết toán học
-2. **PROJECT_SUMMARY.md** - Tổng quan project
-4. Source code trong `adwc_dfs/`
-
----
-
-## 🎯 Các Lệnh Quan Trọng
+## 🎯 Lệnh Chính
 
 ```bash
-# Demo nhanh (10% data) - Tự động lưu log!
-uv run demo.py
-# 📝 Log: logs/demo_YYYYMMDD_HHMMSS.log
-
-# Training đầy đủ (single model)
-uv run train.py --train_path data/train.csv --test_path data/test.csv
-# 📝 Log: logs/training_YYYYMMDD_HHMMSS.log
-
-# Training nhanh (10% data)
-uv run train.py --sample_frac 0.1
-
-# ⭐ NEW: Test Ensemble (nâng recall lên 90%+)
+# ⭐ Test nhanh
 python test_ensemble.py
 
-# ⭐ NEW: Train Full Ensemble
+# ⭐ Train production - Foreground
 python ensemble_voting.py --n_models 5
 
-# So sánh với baselines
-uv run evaluate.py --sample_frac 0.1
-# 📝 Log: logs/evaluation_YYYYMMDD_HHMMSS.log
+# ⭐ Train production - Background (recommended)
+bash train_ensemble.sh -n 5
 
-# Xem logs
-uv run view_logs.py --list          # Liệt kê logs
-uv run view_logs.py --latest        # Xem log mới nhất
-uv run view_logs.py --search "F1"   # Tìm trong logs
+# Advanced: 7 models (recall cao hơn, chậm hơn)
+bash train_ensemble.sh -n 7
+
+# Quick test với 10%
+bash train_ensemble.sh -n 3 -s 0.1
+
+# Monitor background training
+bash monitor_training.sh
+bash watch_training.sh
+```
+
+## 🔥 Background Training (Recommended)
+
+### Train in background (có thể tắt terminal)
+```bash
+# Start training
+bash train_ensemble.sh -n 5
+
+# Monitor progress
+bash monitor_training.sh
+
+# Watch realtime
+bash watch_training.sh
+
+# Stop if needed
+bash stop_training.sh
+
+# View logs later
+python view_logs.py --training_logs
 ```
 
 ---
 
-## 📂 Cấu Trúc Quan Trọng
+## 📊 Performance
 
+| Strategy | Recall | Detected | Missed | Use Case |
+|----------|--------|----------|--------|----------|
+| **Soft (0.13)** | 83.9% | 1800/2145 | 345 | Balanced |
+| **Soft (0.10)** | 85.8% | 1840/2145 | 305 | Production |
+| **Aggressive (2/5)** | 88.3% | 1893/2145 | 252 | High-value |
+| **Aggressive (1/5)** | 90.2% | 1934/2145 | 211 | Critical |
+| **ULTRA** | 91.4% | 1960/2145 | 185 | Maximum detection |
+
+---
+
+## 📚 Tài Liệu
+
+### Bắt đầu
+1. **START_HERE.md** ← Đang đọc
+2. ⭐ **ENSEMBLE_USAGE_GUIDE.md** - Chi tiết ensemble
+3. **HUONG_DAN_TIENG_VIET.md** - Tiếng Việt
+
+### Nâng cao
+1. **README.md** - Tổng quan
+2. **ALGORITHM.md** - Chi tiết thuật toán
+3. Source: `adwc_dfs/`
+
+---
+
+## 📂 Files Quan Trọng
 ```
 ADWC-DFS/
 ├── 📘 START_HERE.md              ← BẮT ĐẦU TẠI ĐÂY
 ├── 📘 HUONG_DAN_TIENG_VIET.md   ← Hướng dẫn tiếng Việt
-├── 📘 QUICKSTART.md              ← Quick start guide
+├── 📘 ENSEMBLE_USAGE_GUIDE.md   ← Chi tiết ensemble
 ├── 📘 README.md                  ← Documentation chính
 ├── 📘 ALGORITHM.md               ← Chi tiết thuật toán
 │
-├── 🐍 demo.py                    ← CHẠY CÁI NÀY ĐẦU TIÊN
-├── 🐍 train.py                   ← Training script
-├── 🐍 evaluate.py                ← Comparison script
-├── 🐍 example_usage.py           ← Examples
+├── 🐍 test_ensemble.py           ← CHẠY CÁI NÀY ĐẦU TIÊN (test nhanh)
+├── 🐍 ensemble_voting.py         ← Train full ensemble
+├── 🐍 main.py                    ← Main entry point
+├── 🐍 view_logs.py               ← Xem training logs
+│
+├── 🔧 train_ensemble.sh          ← Background training
+├── 🔧 monitor_training.sh        ← Monitor progress
+├── 🔧 watch_training.sh          ← Watch realtime
+├── � stop_training.sh           ← Stop training
 │
 ├── 📦 adwc_dfs/                  ← Source code
 │   ├── models/                   ← Model chính
@@ -113,27 +126,30 @@ ADWC-DFS/
 ## 💡 FAQ
 
 ### Q: Tôi nên bắt đầu từ đâu?
-**A:** Chạy `uv run demo.py` ngay!
+**A:** Chạy `python test_ensemble.py` để test nhanh!
 
 ### Q: Tài liệu tiếng Việt ở đâu?
 **A:** Đọc `HUONG_DAN_TIENG_VIET.md`
 
 ### Q: Làm sao xem lại log training?
-**A:** `uv run view_logs.py --list` để xem tất cả logs, `--latest` để xem log mới nhất
+**A:** `python view_logs.py --list` để xem tất cả logs, `--latest` để xem log mới nhất
 
 ### Q: Performance ra sao?
 **A:** 
 - Single model: ~0.86 F1, ~0.87 Recall
-- ⭐ Ensemble: ~0.86 F1, **~0.90+ Recall** (improved!)
+- ⭐ Ensemble: Best F1 ~0.39, **84-91% Recall** (improved!)
 
 ### Q: Ensemble là gì?
-**A:** Kết hợp nhiều models để nâng recall lên 90%+. Xem `ENSEMBLE_USAGE_GUIDE.md`
+**A:** Kết hợp nhiều models để nâng recall lên 84-91%. Xem `ENSEMBLE_USAGE_GUIDE.md`
 
 ### Q: Thuật toán hoạt động thế nào?
 **A:** Đọc `ALGORITHM.md` để hiểu chi tiết
 
 ### Q: Code có comments không?
 **A:** Có! Mỗi function đều có docstring
+
+### Q: Làm sao train trong background?
+**A:** Dùng `bash train_ensemble.sh -n 5` để train background
 
 ---
 
@@ -159,12 +175,15 @@ ADWC-DFS/
 
 ```bash
 # 1. Vào thư mục
-cd /home/shynn/source/ADWC-DFS
+cd /home/shyn/Dev/ADWC-DFS-
 
-# 2. Chạy demo
-uv run demo.py
+# 2. Test ensemble nhanh (10% data, ~5 phút)
+python test_ensemble.py
 
-# 3. Enjoy! 🎉
+# 3. Train production (100% data, ~30-60 phút)
+python ensemble_voting.py --n_models 5
+
+# 4. Enjoy! 🎉
 ```
 
 ---

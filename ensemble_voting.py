@@ -16,6 +16,8 @@ from sklearn.calibration import CalibratedClassifierCV
 import pickle
 import time
 from pathlib import Path
+import matplotlib.pyplot as plt
+import seaborn as sns
 
 
 def preprocess_data(df_train, df_test):
@@ -254,15 +256,35 @@ class VotingEnsemble:
         proba = self.predict_proba(X)
         return (proba > threshold).astype(int)
     
-    def predict_aggressive(self, X, min_votes=2, individual_threshold=0.13):
+    def predict_ultra_aggressive(self, X, individual_threshold=0.08):
+        """
+        ULTRA AGGRESSIVE: Nếu BẤT KỲ model nào báo fraud → fraud
+        Để detect MAXIMUM số fraud, accept nhiều FP
+        
+        Args:
+            X: Features
+            individual_threshold: Threshold rất thấp cho mỗi model
+        
+        Returns:
+            Array of fraud predictions (0 or 1)
+        """
+        all_proba = np.array([m.predict_proba(X) for m in self.models])
+        if all_proba.ndim == 3:
+            all_proba = all_proba[:, :, 1]
+        
+        # Nếu BẤT KỲ model nào có proba > threshold → fraud
+        max_proba = all_proba.max(axis=0)
+        return (max_proba > individual_threshold).astype(int)
+    
+    def predict_aggressive(self, X, min_votes=2, individual_threshold=0.10):
         """
         Aggressive voting để maximize recall
-        Nếu ít nhất min_votes models báo fraud → fraud
+        Giảm threshold xuống 0.10 (từ 0.13)
         
         Args:
             X: Features
             min_votes: Minimum số models phải vote fraud
-            individual_threshold: Threshold cho mỗi model riêng lẻ
+            individual_threshold: Threshold cho mỗi model (giảm xuống 0.10)
         
         Returns:
             Array of fraud predictions (0 or 1)
@@ -307,14 +329,15 @@ class VotingEnsemble:
         
         return final_fraud.astype(int)
     
-    def evaluate(self, X_test, y_test, strategies=None):
+    def evaluate(self, X_test, y_test, strategies=None, save_plots=True, output_dir='results'):
         """
-        Evaluate ensemble với nhiều strategies
+        Evaluate ensemble với nhiều strategies và save visualizations
         
         Args:
             X_test, y_test: Test data
             strategies: List of dicts với strategy configs
-                       Default: test multiple approaches
+            save_plots: Save confusion matrices và plots
+            output_dir: Directory để lưu plots
         
         Returns:
             DataFrame with results for each strategy
@@ -331,6 +354,8 @@ class VotingEnsemble:
                  'kwargs': {'min_votes': 1}},
                 {'name': 'Two-Stage (0.13, 0.05)', 'method': 'predict_two_stage', 
                  'kwargs': {'stage1_threshold': 0.13, 'stage2_threshold': 0.05}},
+                {'name': 'ULTRA AGGRESSIVE', 'method': 'predict_ultra_aggressive',
+                 'kwargs': {'individual_threshold': 0.08}},
             ]
         
         results = []
@@ -338,6 +363,11 @@ class VotingEnsemble:
         print("\n" + "=" * 80)
         print("📊 Evaluating Ensemble Strategies")
         print("=" * 80)
+        
+        # Create output directory
+        if save_plots:
+            plots_dir = Path(output_dir) / 'plots'
+            plots_dir.mkdir(parents=True, exist_ok=True)
         
         for strategy in strategies:
             name = strategy['name']
@@ -347,6 +377,9 @@ class VotingEnsemble:
             # Predict
             y_pred = method(X_test, **kwargs)
             
+            # Get probabilities for ROC/PR curves
+            y_pred_proba = self.predict_proba(X_test)
+            
             # Metrics
             recall = recall_score(y_test, y_pred)
             precision = precision_score(y_test, y_pred)
@@ -355,12 +388,22 @@ class VotingEnsemble:
             # Confusion matrix
             tn, fp, fn, tp = confusion_matrix(y_test, y_pred).ravel()
             
+            # Additional metrics
+            try:
+                roc_auc = roc_auc_score(y_test, y_pred_proba)
+                pr_auc = average_precision_score(y_test, y_pred_proba)
+            except:
+                roc_auc = 0.0
+                pr_auc = 0.0
+            
             # Store results
             results.append({
                 'Strategy': name,
                 'Recall': recall,
                 'Precision': precision,
                 'F1': f1,
+                'ROC_AUC': roc_auc,
+                'PR_AUC': pr_auc,
                 'TP': tp,
                 'FP': fp,
                 'FN': fn,
@@ -371,12 +414,429 @@ class VotingEnsemble:
             print(f"  Recall:    {recall:.4f} ({tp}/{tp+fn} frauds detected)")
             print(f"  Precision: {precision:.4f}")
             print(f"  F1 Score:  {f1:.4f}")
+            print(f"  ROC AUC:   {roc_auc:.4f}")
+            print(f"  PR AUC:    {pr_auc:.4f}")
             print(f"  FN: {fn} (missed frauds) | FP: {fp} (false alarms)")
+            
+            # Save confusion matrix và plots
+            if save_plots:
+                self._plot_strategy_results(
+                    y_test, y_pred, y_pred_proba,
+                    name, tp, fp, fn, tn,
+                    recall, precision, f1,
+                    plots_dir
+                )
+        
+        # Save comparison plots
+        if save_plots:
+            self._plot_strategy_comparison(results, plots_dir)
         
         print("\n" + "=" * 80)
         
         return pd.DataFrame(results)
     
+    def _plot_strategy_results(self, y_test, y_pred, y_pred_proba, strategy_name, 
+                               tp, fp, fn, tn, recall, precision, f1, plots_dir):
+        """
+        Plot detailed results cho một strategy - MỖI BIỂU ĐỒ MỘT FILE
+        
+        Args:
+            y_test: True labels
+            y_pred: Predicted labels
+            y_pred_proba: Predicted probabilities
+            strategy_name: Name of strategy
+            tp, fp, fn, tn: Confusion matrix values
+            recall, precision, f1: Metrics
+            plots_dir: Directory to save plots
+        """
+        # Sanitize filename
+        filename_prefix = strategy_name.replace('/', '_').replace(' ', '_').replace('(', '').replace(')', '').replace(',', '')
+        
+        # 1. CONFUSION MATRIX - File riêng
+        self._save_confusion_matrix(y_test, y_pred, tp, fp, fn, tn, 
+                                    strategy_name, filename_prefix, plots_dir)
+        
+        # 2. METRICS BAR CHART - File riêng
+        self._save_metrics_chart(recall, precision, f1, 
+                                strategy_name, filename_prefix, plots_dir)
+        
+        # 3. ROC CURVE - File riêng
+        self._save_roc_curve(y_test, y_pred_proba, 
+                            strategy_name, filename_prefix, plots_dir)
+        
+        # 4. PR CURVE - File riêng
+        self._save_pr_curve(y_test, y_pred_proba, 
+                           strategy_name, filename_prefix, plots_dir)
+        
+        # 5. DETECTION SUMMARY - File riêng
+        self._save_detection_summary(tp, fp, fn, tn, recall, precision, f1,
+                                    strategy_name, filename_prefix, plots_dir)
+        
+        if self.verbose:
+            print(f"  💾 Saved 5 plots for {strategy_name}")
+    
+    def _save_confusion_matrix(self, y_test, y_pred, tp, fp, fn, tn, 
+                               strategy_name, filename_prefix, plots_dir):
+        """Save confusion matrix as separate image"""
+        fig, ax = plt.subplots(figsize=(8, 7))
+        
+        cm = np.array([[tn, fp], [fn, tp]])
+        cm_normalized = cm.astype('float') / cm.sum(axis=1)[:, np.newaxis]
+        
+        # Create annotations
+        annotations = np.array([
+            [f'{tn:,}\n({cm_normalized[0,0]:.1%})', f'{fp:,}\n({cm_normalized[0,1]:.1%})'],
+            [f'{fn:,}\n({cm_normalized[1,0]:.1%})', f'{tp:,}\n({cm_normalized[1,1]:.1%})']
+        ])
+        
+        sns.heatmap(cm, annot=annotations, fmt='', cmap='Blues', ax=ax,
+                   xticklabels=['Predicted Legit', 'Predicted Fraud'],
+                   yticklabels=['Actual Legit', 'Actual Fraud'],
+                   cbar_kws={'label': 'Count'},
+                   annot_kws={'fontsize': 12, 'fontweight': 'bold'})
+        
+        ax.set_xlabel('Predicted Label', fontsize=13, fontweight='bold')
+        ax.set_ylabel('Actual Label', fontsize=13, fontweight='bold')
+        ax.set_title(f'Confusion Matrix\n{strategy_name}', fontsize=14, fontweight='bold', pad=15)
+        
+        plt.tight_layout()
+        plt.savefig(plots_dir / f'{filename_prefix}_confusion_matrix.png', 
+                   dpi=300, bbox_inches='tight')
+        plt.close()
+    
+    def _save_metrics_chart(self, recall, precision, f1, 
+                           strategy_name, filename_prefix, plots_dir):
+        """Save metrics bar chart as separate image"""
+        fig, ax = plt.subplots(figsize=(8, 6))
+        
+        metrics = ['Recall', 'Precision', 'F1 Score']
+        values = [recall, precision, f1]
+        colors = ['#2ecc71', '#3498db', '#e74c3c']
+        
+        bars = ax.barh(metrics, values, color=colors, alpha=0.8, edgecolor='black', linewidth=1.5)
+        ax.set_xlim(0, 1)
+        ax.set_xlabel('Score', fontsize=13, fontweight='bold')
+        ax.set_title(f'Performance Metrics\n{strategy_name}', fontsize=14, fontweight='bold', pad=15)
+        ax.grid(axis='x', alpha=0.3, linestyle='--')
+        
+        # Add value labels
+        for i, (bar, val) in enumerate(zip(bars, values)):
+            ax.text(val + 0.02, i, f'{val:.4f}', va='center', 
+                   fontsize=12, fontweight='bold')
+        
+        plt.tight_layout()
+        plt.savefig(plots_dir / f'{filename_prefix}_metrics.png', 
+                   dpi=300, bbox_inches='tight')
+        plt.close()
+    
+    def _save_roc_curve(self, y_test, y_pred_proba, 
+                       strategy_name, filename_prefix, plots_dir):
+        """Save ROC curve as separate image"""
+        fig, ax = plt.subplots(figsize=(8, 7))
+        
+        try:
+            from sklearn.metrics import roc_curve, roc_auc_score
+            fpr, tpr, _ = roc_curve(y_test, y_pred_proba)
+            roc_auc = roc_auc_score(y_test, y_pred_proba)
+            
+            ax.plot(fpr, tpr, linewidth=3, label=f'ROC Curve (AUC={roc_auc:.4f})', 
+                   color='#3498db')
+            ax.plot([0, 1], [0, 1], 'k--', linewidth=2, label='Random Classifier', alpha=0.5)
+            
+            ax.set_xlabel('False Positive Rate', fontsize=13, fontweight='bold')
+            ax.set_ylabel('True Positive Rate', fontsize=13, fontweight='bold')
+            ax.set_title(f'ROC Curve\n{strategy_name}', fontsize=14, fontweight='bold', pad=15)
+            ax.legend(fontsize=11, loc='lower right', framealpha=0.9)
+            ax.grid(alpha=0.3, linestyle='--')
+            
+        except Exception as e:
+            ax.text(0.5, 0.5, f'ROC Curve\nUnavailable\n({str(e)})', 
+                   ha='center', va='center', fontsize=12, color='red')
+        
+        plt.tight_layout()
+        plt.savefig(plots_dir / f'{filename_prefix}_roc_curve.png', 
+                   dpi=300, bbox_inches='tight')
+        plt.close()
+    
+    def _save_pr_curve(self, y_test, y_pred_proba, 
+                      strategy_name, filename_prefix, plots_dir):
+        """Save Precision-Recall curve as separate image"""
+        fig, ax = plt.subplots(figsize=(8, 7))
+        
+        try:
+            from sklearn.metrics import precision_recall_curve, average_precision_score
+            prec, rec, _ = precision_recall_curve(y_test, y_pred_proba)
+            pr_auc = average_precision_score(y_test, y_pred_proba)
+            
+            ax.plot(rec, prec, linewidth=3, label=f'PR Curve (AP={pr_auc:.4f})', 
+                   color='#e74c3c')
+            
+            baseline = np.sum(y_test) / len(y_test)
+            ax.axhline(y=baseline, color='k', linestyle='--', linewidth=2, 
+                      label=f'Baseline ({baseline:.4f})', alpha=0.5)
+            
+            ax.set_xlabel('Recall', fontsize=13, fontweight='bold')
+            ax.set_ylabel('Precision', fontsize=13, fontweight='bold')
+            ax.set_title(f'Precision-Recall Curve\n{strategy_name}', 
+                        fontsize=14, fontweight='bold', pad=15)
+            ax.legend(fontsize=11, loc='best', framealpha=0.9)
+            ax.grid(alpha=0.3, linestyle='--')
+            
+        except Exception as e:
+            ax.text(0.5, 0.5, f'PR Curve\nUnavailable\n({str(e)})', 
+                   ha='center', va='center', fontsize=12, color='red')
+        
+        plt.tight_layout()
+        plt.savefig(plots_dir / f'{filename_prefix}_pr_curve.png', 
+                   dpi=300, bbox_inches='tight')
+        plt.close()
+    
+    def _save_detection_summary(self, tp, fp, fn, tn, recall, precision, f1,
+                               strategy_name, filename_prefix, plots_dir):
+        """Save detection summary as separate image"""
+        fig, ax = plt.subplots(figsize=(10, 8))
+        ax.axis('off')
+        
+        total_fraud = tp + fn
+        total_legit = tn + fp
+        total = total_fraud + total_legit
+        
+        # Create summary text with better formatting
+        summary_parts = [
+            f"{'='*60}",
+            f"DETECTION SUMMARY",
+            f"{strategy_name}",
+            f"{'='*60}",
+            f"",
+            f"OVERALL STATISTICS",
+            f"  Total Samples: {total:,}",
+            f"  Total Alerts: {(tp+fp):,} ({(tp+fp)/total*100:.2f}% of all samples)",
+            f"",
+            f"FRAUD DETECTION (Positive Class)",
+            f"  Actual Frauds: {total_fraud:,} ({total_fraud/total*100:.2f}% of total)",
+            f"  ✓ Detected (True Positives):  {tp:,} ({tp/total_fraud*100:.2f}% of frauds)",
+            f"  ✗ Missed (False Negatives):   {fn:,} ({fn/total_fraud*100:.2f}% of frauds)",
+            f"",
+            f"LEGIT TRANSACTIONS (Negative Class)",
+            f"  Actual Legit: {total_legit:,} ({total_legit/total*100:.2f}% of total)",
+            f"  ✓ Correct (True Negatives):   {tn:,} ({tn/total_legit*100:.2f}% of legit)",
+            f"  ✗ False Alarms (False Positives): {fp:,} ({fp/total_legit*100:.2f}% of legit)",
+            f"",
+            f"{'='*60}",
+            f"PERFORMANCE METRICS",
+            f"{'='*60}",
+            f"  Recall (Sensitivity):     {recall:.4f}  ({recall*100:.2f}%)",
+            f"  Precision (PPV):          {precision:.4f}  ({precision*100:.2f}%)",
+            f"  F1 Score:                 {f1:.4f}",
+            f"",
+            f"  False Positive Rate:      {fp/(fp+tn):.4f}  ({fp/(fp+tn)*100:.2f}%)",
+            f"  False Negative Rate:      {fn/(fn+tp):.4f}  ({fn/(fn+tp)*100:.2f}%)",
+            f"",
+            f"{'='*60}",
+            f"INTERPRETATION",
+            f"{'='*60}",
+            f"  • Out of {total_fraud:,} actual frauds, we detected {tp:,}",
+            f"  • We missed {fn:,} frauds ({fn/total_fraud*100:.1f}% miss rate)",
+            f"  • Out of {tp+fp:,} fraud alerts, {tp:,} were correct",
+            f"  • {fp:,} legit transactions were flagged as fraud",
+        ]
+        
+        summary_text = '\n'.join(summary_parts)
+        
+        ax.text(0.05, 0.95, summary_text, 
+               fontsize=10, 
+               family='monospace',
+               verticalalignment='top',
+               bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.3, pad=1.5))
+        
+        plt.tight_layout()
+        plt.savefig(plots_dir / f'{filename_prefix}_summary.png', 
+                   dpi=300, bbox_inches='tight')
+        plt.close()
+
+    def _plot_strategy_comparison(self, results_list, plots_dir):
+        """
+        Plot comparison across all strategies - MỖI COMPARISON MỘT FILE
+        
+        Args:
+            results_list: List of result dictionaries
+            plots_dir: Directory to save plots
+        """
+        df = pd.DataFrame(results_list)
+        
+        # 1. Recall vs Precision scatter - File riêng
+        self._save_recall_precision_scatter(df, plots_dir)
+        
+        # 2. F1 Scores comparison - File riêng
+        self._save_f1_comparison(df, plots_dir)
+        
+        # 3. Detection breakdown - File riêng
+        self._save_detection_breakdown(df, plots_dir)
+        
+        # 4. False Positives comparison - File riêng
+        self._save_fp_comparison(df, plots_dir)
+        
+        # 5. Results table image - File riêng
+        self._create_results_table_image(df, plots_dir)
+        
+        if self.verbose:
+            print(f"\n  💾 Saved 5 comparison plots")
+    
+    def _save_recall_precision_scatter(self, df, plots_dir):
+        """Save Recall vs Precision scatter plot"""
+        fig, ax = plt.subplots(figsize=(10, 8))
+        
+        colors = plt.cm.viridis(np.linspace(0, 1, len(df)))
+        
+        for idx, row in df.iterrows():
+            ax.scatter(row['Recall'], row['Precision'], 
+                      s=300, alpha=0.7, color=colors[idx],
+                      label=row['Strategy'], edgecolors='black', linewidth=2)
+        
+        ax.set_xlabel('Recall', fontsize=13, fontweight='bold')
+        ax.set_ylabel('Precision', fontsize=13, fontweight='bold')
+        ax.set_title('Recall vs Precision Trade-off\nAcross All Strategies', 
+                    fontsize=14, fontweight='bold', pad=15)
+        ax.legend(fontsize=10, loc='best', framealpha=0.9)
+        ax.grid(alpha=0.3, linestyle='--')
+        ax.set_xlim(0, 1)
+        ax.set_ylim(0, max(df['Precision']) * 1.2)
+        
+        plt.tight_layout()
+        plt.savefig(plots_dir / 'comparison_recall_vs_precision.png', 
+                   dpi=300, bbox_inches='tight')
+        plt.close()
+    
+    def _save_f1_comparison(self, df, plots_dir):
+        """Save F1 score comparison"""
+        fig, ax = plt.subplots(figsize=(10, 8))
+        
+        colors = plt.cm.viridis(np.linspace(0, 1, len(df)))
+        bars = ax.barh(df['Strategy'], df['F1'], color=colors, alpha=0.8, 
+                      edgecolor='black', linewidth=1.5)
+        
+        ax.set_xlabel('F1 Score', fontsize=13, fontweight='bold')
+        ax.set_title('F1 Score Comparison\nAcross All Strategies', 
+                    fontsize=14, fontweight='bold', pad=15)
+        ax.grid(axis='x', alpha=0.3, linestyle='--')
+        
+        for i, (bar, val) in enumerate(zip(bars, df['F1'])):
+            ax.text(val + 0.005, i, f'{val:.4f}', va='center', 
+                   fontsize=11, fontweight='bold')
+        
+        plt.tight_layout()
+        plt.savefig(plots_dir / 'comparison_f1_scores.png', 
+                   dpi=300, bbox_inches='tight')
+        plt.close()
+    
+    def _save_detection_breakdown(self, df, plots_dir):
+        """Save detection breakdown (TP vs FN)"""
+        fig, ax = plt.subplots(figsize=(12, 8))
+        
+        x = np.arange(len(df))
+        width = 0.6
+        
+        detected = df['TP'].values
+        missed = df['FN'].values
+        
+        bars1 = ax.bar(x, detected, width, label='✓ Detected (TP)', 
+                      color='#2ecc71', alpha=0.9, edgecolor='black', linewidth=1.5)
+        bars2 = ax.bar(x, missed, width, bottom=detected, label='✗ Missed (FN)', 
+                      color='#e74c3c', alpha=0.9, edgecolor='black', linewidth=1.5)
+        
+        ax.set_ylabel('Number of Frauds', fontsize=13, fontweight='bold')
+        ax.set_title('Fraud Detection Breakdown\nDetected vs Missed', 
+                    fontsize=14, fontweight='bold', pad=15)
+        ax.set_xticks(x)
+        ax.set_xticklabels([s[:20] + '...' if len(s) > 20 else s 
+                           for s in df['Strategy']], 
+                          rotation=45, ha='right', fontsize=10)
+        ax.legend(fontsize=11, loc='upper left', framealpha=0.9)
+        ax.grid(axis='y', alpha=0.3, linestyle='--')
+        
+        # Add value labels on bars
+        for i, (d, m) in enumerate(zip(detected, missed)):
+            ax.text(i, d/2, f'{d}', ha='center', va='center', 
+                   fontsize=10, fontweight='bold', color='white')
+            ax.text(i, d + m/2, f'{m}', ha='center', va='center', 
+                   fontsize=10, fontweight='bold', color='white')
+        
+        plt.tight_layout()
+        plt.savefig(plots_dir / 'comparison_detection_breakdown.png', 
+                   dpi=300, bbox_inches='tight')
+        plt.close()
+    
+    def _save_fp_comparison(self, df, plots_dir):
+        """Save false positives comparison"""
+        fig, ax = plt.subplots(figsize=(10, 8))
+        
+        colors = plt.cm.Oranges(np.linspace(0.4, 0.9, len(df)))
+        bars = ax.barh(df['Strategy'], df['FP'], color=colors, alpha=0.9, 
+                      edgecolor='black', linewidth=1.5)
+        
+        ax.set_xlabel('False Positives (False Alarms)', fontsize=13, fontweight='bold')
+        ax.set_title('False Alarm Comparison\nAcross All Strategies', 
+                    fontsize=14, fontweight='bold', pad=15)
+        ax.grid(axis='x', alpha=0.3, linestyle='--')
+        
+        for i, (strat, val) in enumerate(zip(df['Strategy'], df['FP'])):
+            ax.text(val + 200, i, f'{val:,}', va='center', 
+                   fontsize=11, fontweight='bold')
+        
+        plt.tight_layout()
+        plt.savefig(plots_dir / 'comparison_false_positives.png', 
+                   dpi=300, bbox_inches='tight')
+        plt.close()
+    
+    def _create_results_table_image(self, df, plots_dir):
+        """Create a publication-ready table image"""
+        fig, ax = plt.subplots(figsize=(16, max(6, len(df) * 0.8)))
+        ax.axis('tight')
+        ax.axis('off')
+        
+        # Select columns for display
+        display_cols = ['Strategy', 'Recall', 'Precision', 'F1', 'TP', 'FN', 'FP']
+        display_df = df[display_cols].copy()
+        
+        # Format numbers
+        display_df['Recall'] = display_df['Recall'].apply(lambda x: f'{x:.4f}')
+        display_df['Precision'] = display_df['Precision'].apply(lambda x: f'{x:.4f}')
+        display_df['F1'] = display_df['F1'].apply(lambda x: f'{x:.4f}')
+        display_df['TP'] = display_df['TP'].apply(lambda x: f'{x:,}')
+        display_df['FN'] = display_df['FN'].apply(lambda x: f'{x:,}')
+        display_df['FP'] = display_df['FP'].apply(lambda x: f'{x:,}')
+        
+        # Create table
+        table = ax.table(cellText=display_df.values,
+                        colLabels=display_df.columns,
+                        cellLoc='center',
+                        loc='center',
+                        bbox=[0, 0, 1, 1])
+        
+        table.auto_set_font_size(False)
+        table.set_fontsize(11)
+        table.scale(1, 2.5)
+        
+        # Style header
+        for i in range(len(display_df.columns)):
+            table[(0, i)].set_facecolor('#3498db')
+            table[(0, i)].set_text_props(weight='bold', color='white', fontsize=12)
+        
+        # Alternate row colors
+        for i in range(1, len(display_df) + 1):
+            for j in range(len(display_df.columns)):
+                if i % 2 == 0:
+                    table[(i, j)].set_facecolor('#ecf0f1')
+                else:
+                    table[(i, j)].set_facecolor('#ffffff')
+        
+        plt.title('Ensemble Strategy Results Summary\nComplete Performance Comparison', 
+                 fontsize=15, fontweight='bold', pad=20)
+        
+        plt.savefig(plots_dir / 'comparison_results_table.png', 
+                   dpi=300, bbox_inches='tight')
+        plt.close()
+
     def save(self, filepath):
         """Save ensemble to file"""
         filepath = Path(filepath)
@@ -395,7 +855,6 @@ class VotingEnsemble:
             ensemble = pickle.load(f)
         print(f"📂 Ensemble loaded from: {filepath}")
         return ensemble
-
 
 def compare_with_baseline(X_test, y_test, 
                           baseline_model_path='results/adwc_dfs_model.pkl',

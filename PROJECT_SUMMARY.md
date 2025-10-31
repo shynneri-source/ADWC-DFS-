@@ -1,102 +1,31 @@
-# ADWC-DFS Project Summary
+0# ADWC-DFS Project Summary
 
-## 📦 Project Complete!
+## 📦 Production-Ready Ensemble for Fraud Detection
 
-Thuật toán **ADWC-DFS (Adaptive Density-Weighted Cascade with Dynamic Feature Synthesis)** đã được implement đầy đủ và hoàn chỉnh, bao gồm cả **Voting Ensemble** để nâng cao recall lên 90%+.
+**ADWC-DFS Ensemble** - 5 meta-learning models với voting strategies để đạt **84-91% recall**.
 
-## 🎯 What Has Been Implemented
+## 🎯 Current Implementation
 
-### Core Algorithm (4 Stages)
+### Core Algorithm (ADWC-DFS)
 
-✅ **Stage 1: Local Density Profiling** (`adwc_dfs/stages/stage1_density_profiling.py`)
-- Local Intrinsic Dimensionality (LID)
-- Class-Conditional Density Ratio (CCDR)  
-- Difficulty Score (DS) computation
-- k-NN based neighbor finding
+✅ **4-Stage Meta-Learning** (`adwc_dfs/`)
+- Stage 1: Local Density Profiling
+- Stage 2: Cascade Training (Easy/Medium/Hard specialists)
+- Stage 3: Dynamic Feature Synthesis
+- Stage 4: Adaptive Meta-Classifier
 
-✅ **Stage 2: Cascade Training** (`adwc_dfs/stages/stage2_cascade_training.py`)
-- Three specialist models (Easy, Medium, Hard)
-- Stratified training with adaptive weights
-- Different scale_pos_weight for each specialist
+### Ensemble System ⭐
 
-✅ **Stage 3: Feature Synthesis** (`adwc_dfs/stages/stage3_feature_synthesis.py`)
-- Disagreement features between models
-- Confidence geometry features
-- Local consensus features
-- 19 total meta-features
+✅ **Voting Ensemble** (`ensemble_voting.py`)
+- 5 ADWC-DFS models với configs khác nhau
+- Multiple voting strategies:
+  - **Soft Voting**: Average probabilities (balanced)
+  - **Aggressive Voting**: Min votes (high recall)
+  - **ULTRA AGGRESSIVE**: Any model detects → fraud (maximum recall)
 
-✅ **Stage 4: Meta-Classifier** (`adwc_dfs/stages/stage4_meta_classifier.py`)
-- Adaptive sample weighting
-- Uncertainty-weighted learning
-- Lightweight gradient boosting
-
-### Main Model
-
-✅ **ADWCDFS Class** (`adwc_dfs/models/adwc_dfs.py`)
-- Complete pipeline integration
-- fit() and predict() methods
-- Model save/load functionality
-- Feature importance extraction
-
-### Configuration
-
-✅ **Config System** (`adwc_dfs/config.py`)
-- All hyperparameters in one place
-- Default values based on algorithm design
-- Easy to customize
-
-### Utilities
-
-✅ **Metrics** (`adwc_dfs/utils/metrics.py`)
-- Comprehensive evaluation metrics
-- Business metrics calculation
-- Pretty printing
-
-✅ **Visualization** (`adwc_dfs/utils/visualization.py`)
-- ROC and PR curves
-- Difficulty distribution plots
-- Cascade prediction plots
-- Feature importance plots
-
-### Scripts
-
-✅ **Training Script** (`train.py`)
-- Full training pipeline
-- Data preprocessing
-- Model evaluation
-- Results saving
-
-✅ **Ensemble Scripts** ⭐
-- `ensemble_voting.py` - Voting ensemble implementation
-- `test_ensemble.py` - Quick ensemble testing (10% data)
-- Multiple voting strategies (soft, aggressive, two-stage)
-
-✅ **Evaluation Script** (`evaluate.py`)
-- Comparison with baselines:
-  - XGBoost with class weights
-  - SMOTE + XGBoost
-  - Random Forest
-  - ADWC-DFS
-
-✅ **Demo Script** (`demo.py`)
-- Quick test with small sample
-- Shows all features
-- Easy to run
-
-✅ **Example Usage** (`example_usage.py`)
-- 5 different usage examples
-- Best practices demonstration
-- Threshold tuning guide
-
-### Documentation
-
-✅ **README.md** - Main documentation with overview and usage  
-✅ **QUICKSTART.md** - Quick start guide for beginners  
-✅ **ALGORITHM.md** - Detailed mathematical documentation  
-✅ **ENSEMBLE_USAGE_GUIDE.md** - ⭐ Complete ensemble guide  
-✅ **HUONG_DAN_TIENG_VIET.md** - Vietnamese guide  
-✅ **LOGGING_GUIDE.md** - Logging system documentation  
-✅ **PROJECT_SUMMARY.md** - This file
+✅ **Quick Test** (`test_ensemble.py`)
+- Test với 10% data (~5 phút)
+- Verify implementation trước khi train full
 
 ## 📊 Project Structure
 
@@ -116,6 +45,7 @@ ADWC-DFS/
 │   │   └── stage4_meta_classifier.py
 │   └── utils/
 │       ├── __init__.py
+│       ├── logging.py           # Logging utilities
 │       ├── metrics.py           # Evaluation metrics
 │       └── visualization.py     # Plotting functions
 ├── data/                        # Data directory
@@ -123,52 +53,69 @@ ADWC-DFS/
 │   └── test.csv                # Test data (provided)
 ├── results/                     # Output directory
 │   └── plots/                   # Generated plots
-├── train.py                     # Main training script
-├── evaluate.py                  # Comparison script
-├── demo.py                      # Quick demo
-├── example_usage.py             # Usage examples
+├── training_logs/               # Training logs
+├── ensemble_voting.py           # ⭐ Ensemble implementation
+├── test_ensemble.py             # ⭐ Quick ensemble test
+├── main.py                      # Main entry point
+├── train_ensemble.sh            # Background training script
+├── monitor_training.sh          # Monitor training
+├── watch_training.sh            # Watch training realtime
+├── stop_training.sh             # Stop background training
+├── view_logs.py                 # View training logs
 ├── README.md                    # Main documentation
-├── QUICKSTART.md               # Quick start guide
-├── ALGORITHM.md                # Algorithm details
-├── PROJECT_SUMMARY.md          # This file
-├── requirements.txt            # Python dependencies
-└── pyproject.toml              # Project configuration
+├── START_HERE.md                # Quick start guide
+├── ENSEMBLE_USAGE_GUIDE.md      # ⭐ Ensemble documentation
+├── HUONG_DAN_TIENG_VIET.md     # Vietnamese guide
+├── ALGORITHM.md                 # Algorithm details
+├── PROJECT_SUMMARY.md           # This file
+├── requirements.txt             # Python dependencies
+└── pyproject.toml               # Project configuration
 ```
 
 ## 🚀 How to Use
 
-### Quick Demo (Recommended First Step)
+### Quick Ensemble Test ⭐ (Recommended First Step)
 ```bash
-cd /home/shynn/source/ADWC-DFS
-uv run demo.py
-```
-
-### Quick Ensemble Test ⭐
-```bash
-# Test ensemble with 10% data (~5-10 minutes)
+cd /home/shyn/Dev/ADWC-DFS-
 python test_ensemble.py
 ```
+Test with 10% data (~5 minutes)
 
-### Full Training
+### Full Production Training
 ```bash
-# Train single model on full dataset
-uv run train.py --train_path data/train.csv --test_path data/test.csv
-
 # Train ensemble with 5 models (~30-60 minutes)
 python ensemble_voting.py --n_models 5
 
+# Foreground training
+python ensemble_voting.py --n_models 5
+
+# Background training (recommended)
+bash train_ensemble.sh -n 5
+
+# Monitor progress
+bash monitor_training.sh
+bash watch_training.sh
+```
+
+### View Training Logs
+```bash
+# View latest log
+python view_logs.py --latest
+
+# List all logs
+python view_logs.py --list
+
+# View specific log
+python view_logs.py --log logs/training_20250101_120000.log
+```
+
+### Advanced Options
+```bash
 # Quick test with 10% sample
-uv run train.py --sample_frac 0.1
-```
+python ensemble_voting.py --n_models 3 --sample_frac 0.1
 
-### Compare with Baselines
-```bash
-uv run evaluate.py --sample_frac 0.1 --output_csv results/comparison.csv
-```
-
-### Run Examples
-```bash
-uv run example_usage.py
+# 7 models for higher recall
+bash train_ensemble.sh -n 7
 ```
 
 ## 📈 Expected Performance
@@ -188,12 +135,14 @@ On fraud detection dataset (full data):
 ### Ensemble Model (5 models) ⭐
 | Strategy | Recall | Precision | Best For |
 |----------|--------|-----------|----------|
-| **Soft Voting (0.13)** | 88-90% | 16-18% | Production |
-| **Aggressive (2/5)** | 90-92% | 14-16% | High-value cases |
-| **Aggressive (1/5)** | 92-95% | 12-14% | Mission critical |
-| Training Time | ~3-5 minutes | | |
+| **Soft Voting (0.13)** | 83.9% | 25.4% | Balanced |
+| **Soft Voting (0.10)** | 85.8% | 21.2% | Production |
+| **Aggressive (2/5)** | 88.3% | 17.7% | High-value cases |
+| **Aggressive (1/5)** | 90.2% | 14.5% | Critical |
+| **ULTRA AGGRESSIVE** | 91.4% | 13.0% | Maximum detection |
+| Training Time | ~30-60 minutes | | |
 
-**Note:** Ensemble provides +2-5% recall improvement over single model!
+**Note:** Ensemble provides +3-4% recall improvement over single model!
 
 ## ✨ Key Features
 
@@ -203,7 +152,7 @@ On fraud detection dataset (full data):
 4. **Production-Ready** - Fast inference (~10-20ms)
 5. **Few Hyperparameters** - Only ~8 main parameters
 6. **Robust** - Handles imbalanced data naturally
-7. **Ensemble Support** ⭐ - Voting ensemble for 90%+ recall
+7. **Ensemble Support** ⭐ - Voting ensemble for 84-91% recall
 8. **Multiple Strategies** ⭐ - Soft, aggressive, two-stage voting
 
 ## 🎓 Algorithm Innovation
@@ -232,27 +181,34 @@ On fraud detection dataset (full data):
 
 ## 📝 Files Overview
 
-### Core Implementation (10 files, ~3000 lines)
-- `adwc_dfs/config.py` (60 lines)
-- `adwc_dfs/models/adwc_dfs.py` (280 lines)
-- `adwc_dfs/stages/stage1_density_profiling.py` (200 lines)
-- `adwc_dfs/stages/stage2_cascade_training.py` (180 lines)
-- `adwc_dfs/stages/stage3_feature_synthesis.py` (170 lines)
-- `adwc_dfs/stages/stage4_meta_classifier.py` (140 lines)
-- `adwc_dfs/utils/metrics.py` (120 lines)
-- `adwc_dfs/utils/visualization.py` (170 lines)
+### Core Implementation (~3000 lines)
+- `adwc_dfs/config.py` - Configuration settings
+- `adwc_dfs/models/adwc_dfs.py` - Main ADWCDFS class
+- `adwc_dfs/stages/stage1_density_profiling.py` - Density profiling
+- `adwc_dfs/stages/stage2_cascade_training.py` - Cascade training
+- `adwc_dfs/stages/stage3_feature_synthesis.py` - Feature synthesis
+- `adwc_dfs/stages/stage4_meta_classifier.py` - Meta classifier
+- `adwc_dfs/utils/logging.py` - Logging utilities
+- `adwc_dfs/utils/metrics.py` - Evaluation metrics
+- `adwc_dfs/utils/visualization.py` - Plotting functions
 
-### Scripts (4 files, ~1500 lines)
-- `train.py` (330 lines) - Complete training pipeline
-- `evaluate.py` (260 lines) - Baseline comparison
-- `demo.py` (120 lines) - Quick demonstration
-- `example_usage.py` (350 lines) - Usage examples
+### Scripts (~1500 lines)
+- `ensemble_voting.py` (~1000 lines) - Complete ensemble implementation
+- `test_ensemble.py` - Quick test script
+- `main.py` - Main entry point
+- `view_logs.py` - Log viewing utility
+- `train_ensemble.sh` - Background training
+- `monitor_training.sh` - Monitor training
+- `watch_training.sh` - Watch training realtime
+- `stop_training.sh` - Stop background training
 
-### Documentation (4 files, ~1500 lines)
-- `README.md` (250 lines) - Main documentation
-- `QUICKSTART.md` (160 lines) - Quick start
-- `ALGORITHM.md` (300 lines) - Algorithm details
-- `PROJECT_SUMMARY.md` (This file)
+### Documentation (~1500 lines)
+- `README.md` - Main documentation
+- `START_HERE.md` - Quick start guide
+- `ENSEMBLE_USAGE_GUIDE.md` - Ensemble documentation
+- `HUONG_DAN_TIENG_VIET.md` - Vietnamese guide
+- `ALGORITHM.md` - Algorithm details
+- `PROJECT_SUMMARY.md` - This file
 
 **Total: ~6000 lines of code + documentation**
 
@@ -279,24 +235,24 @@ All managed via UV/pip:
 ## 🎯 Next Steps for Users
 
 ### Beginner:
-1. Read `QUICKSTART.md`
-2. Run `demo.py`
-3. Try `train.py --sample_frac 0.1`
-4. ⭐ Test ensemble: `python test_ensemble.py`
+1. Read `START_HERE.md`
+2. Run `python test_ensemble.py` (quick test)
+3. Read `ENSEMBLE_USAGE_GUIDE.md`
+4. Try full training: `python ensemble_voting.py --n_models 5`
 
 ### Intermediate:
-1. Read `README.md` and `ENSEMBLE_USAGE_GUIDE.md` ⭐
-2. Run full training with your data
-3. Train ensemble: `python ensemble_voting.py --n_models 5` ⭐
-4. Compare with baselines using `evaluate.py`
+1. Read `README.md` and `ENSEMBLE_USAGE_GUIDE.md`
+2. Train ensemble: `python ensemble_voting.py --n_models 5`
+3. Use background training: `bash train_ensemble.sh -n 5`
+4. Monitor training: `bash monitor_training.sh`
 5. Tune hyperparameters in `config.py`
 
 ### Advanced:
 1. Read `ALGORITHM.md`
-2. Explore `example_usage.py`
-3. Customize ensemble strategies ⭐
-4. Customize stages for your use case
-5. Extend with domain-specific features
+2. Customize ensemble strategies in `ensemble_voting.py`
+3. Customize stages for your use case
+4. Extend with domain-specific features
+5. Implement custom voting strategies
 
 ## 🐛 Known Limitations
 

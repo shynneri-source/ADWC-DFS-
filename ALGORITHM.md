@@ -277,7 +277,7 @@ CASCADE_PARAMS = {
 
 **Performance:**
 - Single model: ~87% recall, ~42% precision
-- Ensemble voting: ~90%+ recall achievable
+- Ensemble voting: 84-91% recall achievable (91.4% with ULTRA strategy)
 - Inference: ~10-20ms per sample
 
 ## Comparison with Alternatives
@@ -443,16 +443,24 @@ Run with default config to get baseline performance. Current defaults are optimi
 
 ## Current Features (Implemented)
 
-✅ **Ensemble Voting:** Multiple models with voting for 90%+ recall  
+✅ **Ensemble Voting:** Multiple models with voting for 84-91% recall  
 ✅ **Model Persistence:** Save/load trained models  
 ✅ **Batch Processing:** Efficient inference on large datasets  
 ✅ **Visualization:** Comprehensive plotting utilities  
 ✅ **Logging:** Structured logging with configurable levels  
 ✅ **Best Configuration:** Pre-tuned for optimal recall (86.71%)  
-✅ **Production Ready:** Complete API with example usage
+✅ **Production Ready:** Complete API with example usage  
+✅ **Background Training:** Shell scripts for background processing  
+✅ **Training Monitoring:** Real-time monitoring utilities
 
 ---
 
 **Implementation:** All code available in `adwc_dfs/` directory using LightGBM  
-**Documentation:** See README.md, QUICKSTART.md, and inline code comments  
+**Main Scripts:** 
+- `ensemble_voting.py` - Full ensemble training
+- `test_ensemble.py` - Quick test with 10% data
+- `train_ensemble.sh` - Background training script
+- `view_logs.py` - Log viewing utility
+
+**Documentation:** See README.md, START_HERE.md, ENSEMBLE_USAGE_GUIDE.md, HUONG_DAN_TIENG_VIET.md, and inline code comments  
 **Performance:** Validated on real-world fraud detection dataset

@@ -41,77 +41,31 @@ Mô hình cuối cùng với:
 ## 📦 Cài Đặt
 
 ```bash
-# Di chuyển vào thư mục project
-cd /home/shynn/source/ADWC-DFS
+## 🚀 Bắt Đầu Ngay!
 
-# Cài đặt dependencies với UV (khuyến nghị)
-uv sync
+```bash
+# 1. Vào thư mục
+cd /home/shyn/Dev/ADWC-DFS-
 
-# Hoặc dùng pip
-pip install -r requirements.txt
+# 2. Test ensemble nhanh
+python test_ensemble.py
+
+# 3. Train production
+python ensemble_voting.py --n_models 5
+
+# 4. Enjoy! 🎉
+```
 ```
 
 ## 🚀 Sử Dụng Nhanh
 
-### 1. Chạy Demo (Khuyến nghị bắt đầu)
+## 🎯 Next Steps for Users
 
-```bash
-uv run demo.py
-```
-
-Demo sẽ:
-- Load 10% dữ liệu training
-- Huấn luyện model ADWC-DFS
-- Đánh giá performance
-- Hiển thị feature importance
-- Show các predictions mẫu
-
-**Thời gian chạy:** ~2-3 phút
-
-### 2. Training Đầy Đủ
-
-```bash
-# Train với toàn bộ dữ liệu
-uv run train.py --train_path data/train.csv --test_path data/test.csv
-# 📝 Log tự động: logs/training_YYYYMMDD_HHMMSS.log
-
-# Test nhanh với 10% dữ liệu
-uv run train.py --sample_frac 0.1
-
-# Tùy chỉnh cấu hình
-uv run train.py --k_neighbors 50 --output_dir experiments/run1
-
-# Training không lưu log (nếu muốn nhanh hơn)
-uv run train.py --no_log
-```
-
-**Kết quả được lưu vào:**
-- `results/adwc_dfs_model.pkl` - Model đã train
-- `results/metrics.csv` - Metrics đánh giá
-- `results/feature_importance.csv` - Độ quan trọng features
-- `results/plots/` - Các biểu đồ
-- `logs/training_*.log` - **Log đầy đủ quá trình training** 📝
-
-### 2.5. Training Ensemble (Nâng cao Recall) ⭐
-
-```bash
-# Test nhanh ensemble với 10% data (~5-10 phút)
-python test_ensemble.py
-
-# Train ensemble đầy đủ với 5 models (~30-60 phút)
-python ensemble_voting.py --n_models 5
-
-# Test với 10% data
-python ensemble_voting.py --n_models 5 --sample_frac 0.1
-
-# Aggressive với 7 models
-python ensemble_voting.py --n_models 7
-```
-
-**Kết quả Ensemble:**
-- `results/ensemble_model.pkl` - Ensemble đã train
-- `results/ensemble_results.csv` - Performance metrics
-- Recall: **90%+** (cải thiện từ 87%)
+### Beginner:
+1. Read `START_HERE.md`
+2. Run `python test_ensemble.py`
+3. Try full training: `python ensemble_voting.py --n_models 5`
+4. ⭐ Monitor training: `bash monitor_training.sh`
 
 **📚 Xem chi tiết:** [ENSEMBLE_USAGE_GUIDE.md](ENSEMBLE_USAGE_GUIDE.md)
 
@@ -236,38 +190,28 @@ predictions = loaded_model.predict_proba(X_new)
 
 ## 🔧 Tùy Chỉnh Hyperparameters
 
-### Parameters Quan Trọng
-
-**1. K_NEIGHBORS** (20-50)
-- Mặc định: 30
-- Nhỏ hơn (20): Nhanh hơn, local hơn
-- Lớn hơn (50): Chậm hơn, global hơn
+### File: `adwc_dfs/config.py`
 
 ```python
-config.K_NEIGHBORS = 40
+# Stage 1: Density Profiling
+k_neighbors = 30  # Số lượng neighbors để tính LID/CCDR
+
+# Stage 2: Cascade Training
+scale_pos_weight_easy = 40.0    # Weight cho fraud class - easy model
+scale_pos_weight_medium = 60.0  # Weight cho fraud class - medium model
+scale_pos_weight_hard = 80.0    # Weight cho fraud class - hard model
+
+# Stage 4: Meta-Classifier
+alpha = 10.0  # Weight cho hard+uncertain samples
 ```
 
-**2. ALPHA, BETA, GAMMA** (tổng ≈ 1.0)
-- ALPHA: Trọng số cho CCDR (class overlap)
-- BETA: Trọng số cho LID (complexity)
-- GAMMA: Trọng số cho similarity
+### Thử Nghiệm
+```bash
+# Test với sample nhỏ
+python ensemble_voting.py --n_models 3 --sample_frac 0.05
 
-```python
-config.ALPHA = 0.4
-config.BETA = 0.3
-config.GAMMA = 0.3
-```
-
-**3. SCALE_POS_WEIGHT** (1-20)
-- Easy: 5 (mặc định)
-- Medium: 10 (mặc định)
-- Hard: 15 (mặc định)
-- Tăng nếu recall thấp
-
-```python
-config.SCALE_POS_WEIGHT_EASY = 7
-config.SCALE_POS_WEIGHT_MEDIUM = 12
-config.SCALE_POS_WEIGHT_HARD = 18
+# Train với nhiều models hơn
+python ensemble_voting.py --n_models 7
 ```
 
 ## 📊 Hiểu Kết Quả
@@ -294,9 +238,11 @@ config.SCALE_POS_WEIGHT_HARD = 18
 **Ensemble (5 models):** ⭐
 | Strategy | Recall | Precision |
 |----------|--------|-----------|
-| Soft Voting | 88-90% | 16-18% |
-| Aggressive (2/5) | 90-92% | 14-16% |
-| Aggressive (1/5) | 92-95% | 12-14% |
+| Soft Voting (0.13) | 83.9% | 25.4% |
+| Soft Voting (0.10) | 85.8% | 21.2% |
+| Aggressive (2/5) | 88.3% | 17.7% |
+| Aggressive (1/5) | 90.2% | 14.5% |
+| ULTRA AGGRESSIVE | 91.4% | 13.0% |
 
 **Lưu ý:** Kết quả tốt hơn với nhiều dữ liệu hơn!
 
@@ -365,10 +311,10 @@ y_pred = model.predict(X_test, threshold=0.3)
 ## 📚 Tài Liệu Tham Khảo
 
 ### Cho Người Mới Bắt Đầu:
-1. Đọc `QUICKSTART.md`
-2. Chạy `demo.py`
-3. Thử `train.py --sample_frac 0.1`
-4. ⭐ Test ensemble: `python test_ensemble.py`
+1. Đọc `START_HERE.md`
+2. Chạy `python test_ensemble.py`
+3. Thử full training: `python ensemble_voting.py --n_models 5`
+4. ⭐ Monitor: `bash monitor_training.sh`
 
 ### Cho Người Có Kinh Nghiệm:
 1. Đọc `README.md`
@@ -380,8 +326,8 @@ y_pred = model.predict(X_test, threshold=0.3)
 
 ### Cho Chuyên Gia:
 1. Đọc `ALGORITHM.md`
-2. Xem `example_usage.py`
-3. ⭐ Tùy chỉnh ensemble strategies
+2. Tùy chỉnh `ensemble_voting.py`
+3. ⭐ Implement custom voting strategies
 4. Tùy chỉnh các stages
 5. Mở rộng với domain features
 

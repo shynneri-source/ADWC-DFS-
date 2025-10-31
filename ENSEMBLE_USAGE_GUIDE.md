@@ -1,7 +1,7 @@
 # 🎯 Hướng Dẫn Sử Dụng Ensemble Voting
 
 ## Mục Tiêu
-Nâng Recall từ **86.71%** lên **90%+** bằng Voting Ensemble
+Nâng Recall từ **~87%** lên **84-91%** bằng Voting Ensemble
 
 ---
 
@@ -14,8 +14,8 @@ python test_ensemble.py
 ```
 
 **Kết quả mong đợi:**
-- Training time: ~2-3 phút
-- Recall cải thiện: +1-2%
+- Training time: ~5-10 phút
+- Recall: 84-91% depending on strategy
 - Verify rằng ensemble hoạt động đúng
 
 ---
@@ -169,28 +169,40 @@ print(comparison_df)
 ## 📈 Expected Results
 
 ### Baseline (Single Model)
-- Recall: 86.71%
-- Precision: 18.16%
-- Detected: 1860/2145 frauds
-- Missed: 285 frauds
+- Recall: ~87%
+- Precision: Variable
+- Detected: ~1865/2145 frauds
+- Missed: ~280 frauds
 
 ### Ensemble với Soft Voting (threshold=0.13)
-- **Recall: 88-90%** (+2-3% improvement)
-- Precision: 16-18%
-- Detected: ~1900-1930/2145 frauds
-- Missed: ~215-245 frauds
+- **Recall: 83.9%**
+- Precision: 25.4%
+- Detected: 1800/2145 frauds
+- Missed: 345 frauds
+
+### Ensemble với Soft Voting (threshold=0.10)
+- **Recall: 85.8%**
+- Precision: 21.2%
+- Detected: 1840/2145 frauds
+- Missed: 305 frauds
 
 ### Ensemble với Aggressive Voting (min_votes=2)
-- **Recall: 90-92%** (+3-5% improvement)
-- Precision: 14-16%
-- Detected: ~1930-1975/2145 frauds
-- Missed: ~170-215 frauds
+- **Recall: 88.3%**
+- Precision: 17.7%
+- Detected: 1893/2145 frauds
+- Missed: 252 frauds
 
 ### Ensemble với Aggressive Voting (min_votes=1)
-- **Recall: 92-95%** (+5-8% improvement)
-- Precision: 12-14%
-- Detected: ~1975-2040/2145 frauds
-- Missed: ~105-170 frauds
+- **Recall: 90.2%**
+- Precision: 14.5%
+- Detected: 1934/2145 frauds
+- Missed: 211 frauds
+
+### Ensemble với ULTRA AGGRESSIVE
+- **Recall: 91.4%**
+- Precision: 13.0%
+- Detected: 1960/2145 frauds
+- Missed: 185 frauds
 
 ---
 
@@ -270,11 +282,12 @@ ensemble.predict_two_stage(X, stage1_threshold=0.13, stage2_threshold=0.05)
 
 | Strategy | Recall | Precision | FP Rate | Best For |
 |----------|--------|-----------|---------|----------|
-| **Soft (0.13)** | 88-90% | 16-18% | Low | Production |
-| **Soft (0.10)** | 90-91% | 14-16% | Medium | Higher recall needed |
-| **Aggressive (2/5)** | 90-92% | 14-16% | Medium | Critical frauds |
-| **Aggressive (1/5)** | 92-95% | 12-14% | High | Mission critical |
-| **Two-Stage** | 89-91% | 15-17% | Medium | Balanced approach |
+| **Soft (0.13)** | 83.9% | 25.4% | Low | Balanced |
+| **Soft (0.10)** | 85.8% | 21.2% | Medium | Production |
+| **Aggressive (2/5)** | 88.3% | 17.7% | Medium | High-value |
+| **Aggressive (1/5)** | 90.2% | 14.5% | High | Critical |
+| **Two-Stage** | 89.9% | 14.7% | High | Mission critical |
+| **ULTRA** | 91.4% | 13.0% | Very High | Maximum detection |
 
 ---
 
@@ -426,7 +439,7 @@ print(results_df)
 **Ensemble Voting là cách nhanh nhất và hiệu quả nhất để nâng Recall:**
 
 ✅ **Easy to implement** - Code đã ready  
-✅ **High impact** - +2-5% recall improvement  
+✅ **High impact** - Up to 91.4% recall with ULTRA strategy  
 ✅ **Production ready** - Tested và stable  
 ✅ **Flexible** - Multiple strategies to choose from  
 ✅ **Scalable** - Works với large datasets  
@@ -436,12 +449,12 @@ print(results_df)
 python test_ensemble.py
 ```
 
-**Target achieved:** 90%+ Recall 🎉
+**Best Performance:** 91.4% Recall with ULTRA strategy 🎉
 
 ---
 
-**Last Updated:** 2025-01-06  
-**Current Recall:** 86.71%  
-**Target Recall:** 90%+  
+**Last Updated:** 2025-10-31  
+**Baseline Recall:** ~87%  
+**Ensemble Recall:** 84-91% (depending on strategy)  
 **Method:** Voting Ensemble  
-**Status:** ✅ Ready to implement
+**Status:** ✅ Production Ready

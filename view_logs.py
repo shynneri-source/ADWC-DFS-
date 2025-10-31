@@ -10,40 +10,50 @@ from datetime import datetime
 
 def list_logs(log_dir='logs', prefix=None):
     """List all log files"""
-    if not os.path.exists(log_dir):
-        print(f"Log directory '{log_dir}' does not exist")
-        return []
+    # Support both logs/ and training_logs/ directories
+    log_dirs_to_check = [log_dir]
+    if log_dir == 'logs':
+        log_dirs_to_check.append('training_logs')
     
-    log_files = [f for f in os.listdir(log_dir) if f.endswith('.log')]
+    all_log_files = []
     
-    if prefix:
-        log_files = [f for f in log_files if f.startswith(prefix)]
+    for dir_to_check in log_dirs_to_check:
+        if not os.path.exists(dir_to_check):
+            continue
+            
+        log_files = [f for f in os.listdir(dir_to_check) if f.endswith('.log')]
+        
+        if prefix:
+            log_files = [f for f in log_files if f.startswith(prefix)]
+        
+        # Add directory prefix to filenames
+        for f in log_files:
+            all_log_files.append((os.path.join(dir_to_check, f), f, dir_to_check))
     
-    if not log_files:
-        print(f"No log files found in '{log_dir}'")
+    if not all_log_files:
+        print(f"No log files found in {log_dirs_to_check}")
         return []
     
     # Sort by modification time (newest first)
-    log_files.sort(key=lambda f: os.path.getmtime(os.path.join(log_dir, f)), reverse=True)
+    all_log_files.sort(key=lambda x: os.path.getmtime(x[0]), reverse=True)
     
     print(f"\n{'#'*80}")
     print(f"{'Log Files':^80}")
     print(f"{'#'*80}\n")
-    print(f"{'#':<4} {'Filename':<40} {'Size':<12} {'Modified':<20}")
+    print(f"{'#':<4} {'Filename':<35} {'Directory':<15} {'Size':<12} {'Modified':<20}")
     print(f"{'-'*80}")
     
-    for idx, filename in enumerate(log_files, 1):
-        filepath = os.path.join(log_dir, filename)
+    for idx, (filepath, filename, directory) in enumerate(all_log_files, 1):
         size = os.path.getsize(filepath)
         size_str = f"{size:,} bytes" if size < 1024 else f"{size/1024:.1f} KB"
         mtime = datetime.fromtimestamp(os.path.getmtime(filepath))
         mtime_str = mtime.strftime('%Y-%m-%d %H:%M:%S')
         
-        print(f"{idx:<4} {filename:<40} {size_str:<12} {mtime_str:<20}")
+        print(f"{idx:<4} {filename:<35} {directory:<15} {size_str:<12} {mtime_str:<20}")
     
     print(f"{'-'*80}\n")
     
-    return [os.path.join(log_dir, f) for f in log_files]
+    return [x[0] for x in all_log_files]
 
 
 def view_log(log_file, lines=None, tail=False):
@@ -114,7 +124,9 @@ def search_logs(log_dir='logs', keyword='', prefix=None):
 def main():
     parser = argparse.ArgumentParser(description='View and manage ADWC-DFS training logs')
     parser.add_argument('--log_dir', type=str, default='logs',
-                       help='Directory containing log files')
+                       help='Directory containing log files (default: logs, also checks training_logs)')
+    parser.add_argument('--training_logs', action='store_true',
+                       help='Check training_logs directory specifically')
     parser.add_argument('--list', action='store_true',
                        help='List all log files')
     parser.add_argument('--view', type=int, default=None,
@@ -133,6 +145,10 @@ def main():
                        help='Search for keyword in log files')
     
     args = parser.parse_args()
+    
+    # Override log_dir if --training_logs specified
+    if args.training_logs:
+        args.log_dir = 'training_logs'
     
     if args.search:
         search_logs(args.log_dir, args.search, args.prefix)
