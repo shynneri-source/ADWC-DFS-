@@ -1,0 +1,42 @@
+🧹 Cleaning up old PID file...
+🎯 Starting ADWC-DFS Ensemble Training
+======================================
+Timestamp: Thứ hai, 17 Tháng 11 năm 2025 09:22:17 +07
+Command: python ensemble_voting.py --n_models 5
+Log file: /home/shyn/Dev/ADWC-DFS-/training_logs/ensemble_training_20251117_092217.log
+PID file: /home/shyn/Dev/ADWC-DFS-/training_logs/training.pid
+
+🚀 Launching training process...
+✅ Training started successfully!
+   Process ID: 194870
+==================================
+SYSTEM INFORMATION
+==================================
+   Log file: /home/shyn/Dev/ADWC-DFS-/training_logs/ensemble_training_20251117_092217.log
+Date: Thứ hai, 17 Tháng 11 năm 2025 09:22:17 +07
+PWD: /home/shyn/Dev/ADWC-DFS-
+
+Python: 
+📋 Monitoring commands:
+UV: /home/shyn/.local/bin/uv
+Command: python ensemble_voting.py --n_models 5
+==================================
+
+environment: line 22: python: command not found
+
+==================================
+TRAINING COMPLETED
+==================================
+Exit code: 127
+   Watch progress: tail -f /home/shyn/Dev/ADWC-DFS-/training_logs/ensemble_training_20251117_092217.log
+End time: Thứ hai, 17 Tháng 11 năm 2025 09:22:17 +07
+Log file: /home/shyn/Dev/ADWC-DFS-/training_logs/ensemble_training_20251117_092217.log
+==================================
+   Check status:   bash monitor_training.sh
+   Stop training:  bash stop_training.sh
+
+🔥 You can now safely close this terminal!
+   Training will continue in background.
+   After training completes, inference tests will run automatically.
+❌ Training process failed to start!
+   Check log file: /home/shyn/Dev/ADWC-DFS-/training_logs/ensemble_training_20251117_092217.log

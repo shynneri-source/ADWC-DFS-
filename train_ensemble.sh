@@ -100,7 +100,7 @@ nohup bash -c "
     run_training() {
         local log_file=\"\$1\"
         local cmd=\"\$2\"
-        
+
         # Log system info
         {
             echo \"==================================\"
@@ -114,11 +114,11 @@ nohup bash -c "
             echo \"==================================\"
             echo \"\"
         } >> \"\$log_file\"
-        
+
         # Run the actual training
         eval \"\$cmd\" >> \"\$log_file\" 2>&1
         local exit_code=\$?
-        
+
         # Log completion
         {
             echo \"\"
@@ -130,10 +130,51 @@ nohup bash -c "
             echo \"Log file: \$log_file\"
             echo \"==================================\"
         } >> \"\$log_file\"
-        
+
+        # If training was successful, run inference tests
+        if [ \$exit_code -eq 0 ]; then
+            echo \"\"
+            echo \"==================================\"
+            echo \"RUNNING INFERENCE TESTS\"
+            echo \"==================================\"
+            echo \"Starting inference tests on \$(date)\"
+            echo \"\"
+
+            # Run inference tests with default parameters
+            INFER_CMD=\"$PYTHON_CMD inference_test.py --model_path results/ensemble_model.pkl --test_path data/test.csv --sample_size 1000 --num_samples 5\"
+            echo \"Running: \$INFER_CMD\"
+
+            eval \"\$INFER_CMD\" >> \"\$log_file\" 2>&1
+            local infer_exit_code=\$?
+
+            if [ \$infer_exit_code -eq 0 ]; then
+                echo \"\"
+                echo \"==================================\"
+                echo \"INFERENCE TESTS COMPLETED SUCCESSFULLY\"
+                echo \"==================================\"
+                echo \"Inference tests completed on \$(date)\"
+                echo \"Results saved to results/inference_tests/\"
+                echo \"==================================\"
+            else
+                echo \"\"
+                echo \"==================================\"
+                echo \"INFERENCE TESTS FAILED\"
+                echo \"==================================\"
+                echo \"Inference tests failed on \$(date) with exit code: \$infer_exit_code\"
+                echo \"==================================\"
+            fi
+        else
+            echo \"\"
+            echo \"==================================\"
+            echo \"TRAINING FAILED - SKIPPING INFERENCE TESTS\"
+            echo \"==================================\"
+            echo \"Training failed with exit code: \$exit_code\"
+            echo \"==================================\"
+        fi
+
         return \$exit_code
     }
-    
+
     # Call the function
     run_training '$LOG_FILE' '$CMD'
 " > /dev/null 2>&1 &
@@ -154,6 +195,7 @@ log_and_print "   Stop training:  bash stop_training.sh"
 log_and_print ""
 log_and_print "🔥 You can now safely close this terminal!"
 log_and_print "   Training will continue in background."
+log_and_print "   After training completes, inference tests will run automatically."
 
 # Wait a moment to ensure process started
 sleep 2
@@ -170,4 +212,5 @@ fi
 
 echo ""
 echo "🎉 Setup complete! Training is now running in background."
+echo "   After training completes, inference tests will run automatically."
 echo "   Monitor: tail -f $LOG_FILE"

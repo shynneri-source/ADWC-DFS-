@@ -5,7 +5,7 @@
 **Base Algorithm:** LightGBM Gradient Boosting  
 **Language:** Python 3.12+  
 **Key Dependencies:** scikit-learn, LightGBM, NumPy  
-**Current Version:** Optimized for 86.71% recall on fraud detection  
+**Current Performance:** Single model ~87% recall | Ensemble 84-91% recall (best: 91.4% with ULTRA strategy)  
 
 This document describes the mathematical foundation and implementation details of the ADWC-DFS algorithm. All formulas and parameters reflect the current production configuration.
 
@@ -370,7 +370,7 @@ CASCADE_PARAMS = {
 ## Tuning Strategy
 
 ### Step 1: Start with Defaults
-Run with default config to get baseline performance. Current defaults are optimized for high recall (86.71% on test data).
+Run with default config to get baseline performance. Current defaults are optimized for high recall (~87% for single model, 84-91% for ensemble).
 
 ### Step 2: Adjust K_NEIGHBORS
 - If training too slow: reduce to 20
@@ -427,8 +427,9 @@ Run with default config to get baseline performance. Current defaults are optimi
    - Typical: 2-5 minutes for 200K samples
 
 6. **Hyperparameter Sensitivity:** Performance depends on proper tuning
-   - Provided: Best configuration achieving 86.71% recall
-   - Tools: Grid search utilities included
+   - Provided: Best configuration achieving ~87% recall (single model)
+   - Ensemble: 84-91% recall with voting strategies
+   - Tools: Complete ensemble implementation included
 
 ## Future Enhancements
 
@@ -448,7 +449,7 @@ Run with default config to get baseline performance. Current defaults are optimi
 ✅ **Batch Processing:** Efficient inference on large datasets  
 ✅ **Visualization:** Comprehensive plotting utilities  
 ✅ **Logging:** Structured logging with configurable levels  
-✅ **Best Configuration:** Pre-tuned for optimal recall (86.71%)  
+✅ **Best Configuration:** Pre-tuned for optimal recall (~87% single, 84-91% ensemble)  
 ✅ **Production Ready:** Complete API with example usage  
 ✅ **Background Training:** Shell scripts for background processing  
 ✅ **Training Monitoring:** Real-time monitoring utilities
